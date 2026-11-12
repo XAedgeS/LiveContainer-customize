@@ -150,6 +150,12 @@ extern const UIApplication *UIApp;
 
 @interface FBScene (a)
 - (UIApplicationSceneSettings*)settings;
+- (UIApplicationSceneClientSettings*)clientSettings;
+@end
+
+@interface UIApplicationSceneClientSettings(Multitask)
+- (BOOL)statusBarHidden;
+- (BOOL)homeIndicatorAutoHidden;
 @end
 
 @interface UIMutableApplicationSceneSettings(Multitask)

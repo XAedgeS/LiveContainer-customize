@@ -22001,6 +22001,61 @@
         }
       }
     },
+    "lc.settings.fullscreenStatusBar" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fullscreen Status Bar"
+          }
+        }
+      }
+    },
+    "lc.settings.fullscreenStatusBar.alwaysHide" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Always Hide"
+          }
+        }
+      }
+    },
+    "lc.settings.fullscreenStatusBar.alwaysShow" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Always Show"
+          }
+        }
+      }
+    },
+    "lc.settings.fullscreenStatusBar.desc" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controls the status bar and home indicator for multitask apps. Virtual Window: applies when the app is maximized and the dock is collapsed. Native Window: applies to the app's own window. Follow App hides them only when the app requests it."
+          }
+        }
+      }
+    },
+    "lc.settings.fullscreenStatusBar.followApp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Follow App"
+          }
+        }
+      }
+    },
     "lc.settings.hideCollapsedDock" : {
       "comment" : "lc.settings.hideCollapsedDock",
       "extractionState" : "stale",

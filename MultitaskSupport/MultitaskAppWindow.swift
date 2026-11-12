@@ -42,9 +42,50 @@ struct MultitaskAppInfo {
     }
 }
 
+// Per-window status bar / home indicator state for native window mode.
+@available(iOS 16.1, *)
+class NativeWindowOverlayState: ObservableObject {
+    weak var appSceneVC: AppSceneViewController?
+    @Published private(set) var statusBarHidden = false
+    @Published private(set) var homeIndicatorHidden = false
+    private var timer: Timer?
+
+    init() {
+        // Client settings have no reliable change callback across iOS versions, so poll.
+        timer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { [weak self] _ in
+            self?.update()
+        }
+    }
+
+    deinit {
+        timer?.invalidate()
+    }
+
+    private func update() {
+        var hideStatusBar = false
+        var hideHomeIndicator = false
+        if let vc = appSceneVC {
+            let mode = LCFullscreenStatusBarMode(rawValue: LCUtils.appGroupUserDefault.integer(forKey: "LCFullscreenStatusBarMode")) ?? .followApp
+            switch mode {
+            case .followApp:
+                hideStatusBar = vc.clientPrefersStatusBarHidden()
+                hideHomeIndicator = vc.clientPrefersHomeIndicatorAutoHidden()
+            case .alwaysHide:
+                hideStatusBar = true
+                hideHomeIndicator = true
+            case .alwaysShow:
+                break
+            }
+        }
+        if hideStatusBar != statusBarHidden { statusBarHidden = hideStatusBar }
+        if hideHomeIndicator != homeIndicatorHidden { homeIndicatorHidden = hideHomeIndicator }
+    }
+}
+
 @available(iOS 16.1, *)
 struct AppSceneViewSwiftUI: UIViewControllerRepresentable {
     @Binding var show: Bool
+    let overlayState: NativeWindowOverlayState
     let bundleId: String
     let dataUUID: String
     let initSize: CGSize
@@ -106,7 +147,9 @@ struct AppSceneViewSwiftUI: UIViewControllerRepresentable {
     }
     
     func makeUIViewController(context: Context) -> UIViewController {
-        return AppSceneViewController(bundleId: bundleId, dataUUID: dataUUID, delegate: context.coordinator)
+        let vc: AppSceneViewController = AppSceneViewController(bundleId: bundleId, dataUUID: dataUUID, delegate: context.coordinator)
+        overlayState.appSceneVC = vc
+        return vc
     }
     
     func updateUIViewController(_ vc: UIViewController, context _: Context) {
@@ -126,6 +169,7 @@ struct MultitaskAppWindow: View {
     @State var errorMessage: String? = nil
     @State private var hasScheduledAutoClose = false
     @State private var didRequestManualClose = false
+    @StateObject private var overlayState = NativeWindowOverlayState()
     @EnvironmentObject var sceneDelegate: SceneDelegate
     @Environment(\.openWindow) var openWindow
     @AppStorage("LCMultitaskMode", store: LCUtils.appGroupUserDefault) var multitaskMode: MultitaskMode = .virtualWindow
@@ -142,7 +186,7 @@ struct MultitaskAppWindow: View {
         let isVirtualWindowMode = multitaskMode == .virtualWindow
         if show, let appInfo {
             GeometryReader { geometry in
-                AppSceneViewSwiftUI(show: $show, bundleId: appInfo.bundleId, dataUUID: appInfo.dataUUID, initSize: geometry.size,
+                AppSceneViewSwiftUI(show: $show, overlayState: overlayState, bundleId: appInfo.bundleId, dataUUID: appInfo.dataUUID, initSize: geometry.size,
                                     onAppInitialize: { pid, error in
                     DispatchQueue.main.async {
                         if error == nil {
@@ -158,6 +202,8 @@ struct MultitaskAppWindow: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .ignoresSafeArea(.all, edges: .all)
+            .statusBarHidden(overlayState.statusBarHidden)
+            .persistentSystemOverlays(overlayState.homeIndicatorHidden ? .hidden : .automatic)
             .navigationTitle(Text("\(appInfo.displayName) - \(String(pid))"))
             .onReceive(pub) { out in
                 if let scene1 = sceneDelegate.window?.windowScene, let scene2 = out.object as? UIWindowScene, scene1 == scene2 {

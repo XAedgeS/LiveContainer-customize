@@ -106,6 +106,7 @@ struct LiveContainerSwiftUIApp : SwiftUI.App {
                 .handlesExternalEvents(preferring: ["*"], allowing: ["*"])
                 .environmentObject(DataManager.shared.model)
                 .environmentObject(LCAppSortManager.shared)
+                .modifier(LCHostSystemOverlayModifier())
         }
         
         if UIApplication.shared.supportsMultipleScenes, #available(iOS 16.1, *) {

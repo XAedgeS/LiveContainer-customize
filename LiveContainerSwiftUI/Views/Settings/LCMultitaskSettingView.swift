@@ -19,6 +19,7 @@ struct LCMultitaskSettingView: View {
     @AppStorage("LCDockWidth", store: LCUtils.appGroupUserDefault) var dockWidth: Double = 80
     @AppStorage("LCHideCollapsedDock", store: LCUtils.appGroupUserDefault) var hideCollapsedDock: Bool = false
     @AppStorage("LCRedirectURLToHost", store: LCUtils.appGroupUserDefault) var redirectURLToHost = false
+    @AppStorage("LCFullscreenStatusBarMode", store: LCUtils.appGroupUserDefault) var fullscreenStatusBarMode: LCFullscreenStatusBarMode = .followApp
     
     var body: some View {
         List {
@@ -64,7 +65,19 @@ struct LCMultitaskSettingView: View {
 
                 }
             }
-            
+
+            Section {
+                Picker(selection: $fullscreenStatusBarMode) {
+                    Text("lc.settings.fullscreenStatusBar.followApp".loc).tag(LCFullscreenStatusBarMode.followApp)
+                    Text("lc.settings.fullscreenStatusBar.alwaysHide".loc).tag(LCFullscreenStatusBarMode.alwaysHide)
+                    Text("lc.settings.fullscreenStatusBar.alwaysShow".loc).tag(LCFullscreenStatusBarMode.alwaysShow)
+                } label: {
+                    Text("lc.settings.fullscreenStatusBar".loc)
+                }
+            } footer: {
+                Text("lc.settings.fullscreenStatusBar.desc".loc)
+            }
+
             Section {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {

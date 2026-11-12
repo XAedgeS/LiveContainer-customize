@@ -125,6 +125,43 @@ class AppInfoProvider {
     }
 }
 
+// MARK: - Host System Overlays
+// Host status bar / home indicator visibility, applied by the root SwiftUI view.
+@objc public class LCHostSystemOverlayState: NSObject, ObservableObject {
+    @objc public static let shared = LCHostSystemOverlayState()
+    @Published public private(set) var statusBarHidden = false
+    @Published public private(set) var homeIndicatorHidden = false
+
+    // Returns true if anything changed.
+    func update(statusBarHidden: Bool, homeIndicatorHidden: Bool) -> Bool {
+        guard statusBarHidden != self.statusBarHidden || homeIndicatorHidden != self.homeIndicatorHidden else { return false }
+        self.statusBarHidden = statusBarHidden
+        self.homeIndicatorHidden = homeIndicatorHidden
+        return true
+    }
+}
+
+// LCFullscreenStatusBarMode values
+enum LCFullscreenStatusBarMode: Int {
+    case followApp = 0
+    case alwaysHide = 1
+    case alwaysShow = 2
+}
+
+struct LCHostSystemOverlayModifier: ViewModifier {
+    @ObservedObject var state = LCHostSystemOverlayState.shared
+
+    func body(content: Content) -> some View {
+        if #available(iOS 16.0, *) {
+            content
+                .statusBarHidden(state.statusBarHidden)
+                .persistentSystemOverlays(state.homeIndicatorHidden ? .hidden : .automatic)
+        } else {
+            content.statusBarHidden(state.statusBarHidden)
+        }
+    }
+}
+
 // MARK: - MultitaskDockView Manager
 @available(iOS 16.0, *)
 @objc public class MultitaskDockManager: NSObject, ObservableObject {
@@ -138,6 +175,7 @@ class AppInfoProvider {
 
     @objc public var windowHostingView = VirtualWindowsHostView()
     internal var hostingController: UIHostingController<AnyView>?
+    private var systemOverlayTimer: Timer?
 
     public struct Constants {
         // MARK: - Layout & Sizing
@@ -300,9 +338,44 @@ class AppInfoProvider {
             name: UIDevice.orientationDidChangeNotification,
             object: nil
         )
+        // Client settings have no reliable change callback across iOS versions, so poll.
+        systemOverlayTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { [weak self] _ in
+            self?.updateHostSystemOverlays()
+        }
     }
-    
+
+    // Hide host status bar / home indicator when the frontmost window is in full screen.
+    @objc public func updateHostSystemOverlays() {
+        var hideStatusBar = false
+        var hideHomeIndicator = false
+        if isDockEnabled(), isCollapsed,
+           let frontView = windowHostingView.subviews.last, !frontView.isHidden, frontView.alpha > 0.1,
+           let vc = frontView._viewDelegate() as? DecoratedAppSceneViewController, vc.isMaximized {
+            let mode = LCFullscreenStatusBarMode(rawValue: LCUtils.appGroupUserDefault.integer(forKey: "LCFullscreenStatusBarMode")) ?? .followApp
+            switch mode {
+            case .followApp:
+                hideStatusBar = vc.appSceneVC.clientPrefersStatusBarHidden()
+                hideHomeIndicator = vc.appSceneVC.clientPrefersHomeIndicatorAutoHidden()
+            case .alwaysHide:
+                hideStatusBar = true
+                hideHomeIndicator = true
+            case .alwaysShow:
+                break
+            }
+        }
+        guard LCHostSystemOverlayState.shared.update(statusBarHidden: hideStatusBar, homeIndicatorHidden: hideHomeIndicator) else { return }
+        // Host safe area may change with the status bar; refresh maximized windows after it settles.
+        DispatchQueue.main.asyncAfter(deadline: .now() + Constants.standardAnimationDuration) {
+            self.apps.forEach { app in
+                if let vc = app.view?._viewDelegate() as? DecoratedAppSceneViewController, vc.isMaximized {
+                    vc.updateVerticalConstraints()
+                }
+            }
+        }
+    }
+
     deinit {
+        systemOverlayTimer?.invalidate()
         NotificationCenter.default.removeObserver(self)
         NotificationCenter.default.removeObserver(self, name: UIDevice.orientationDidChangeNotification, object: nil)
     }
@@ -744,8 +817,9 @@ class AppInfoProvider {
                 vc.updateVerticalConstraints()
             }
         }
+        updateHostSystemOverlays()
     }
-    
+
     // Toggle dock hide/show state
     @objc public func toggleDockVisibility() {
         DispatchQueue.main.async {

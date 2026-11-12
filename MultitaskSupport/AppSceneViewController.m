@@ -419,5 +419,21 @@
     return _hostingController != nil;
 }
 
+- (UIApplicationSceneClientSettings *)sceneClientSettings {
+    FBScene *scene = self.presenter.scene;
+    if(!self.isAppRunning || ![scene respondsToSelector:@selector(clientSettings)]) return nil;
+    return scene.clientSettings;
+}
+
+- (BOOL)clientPrefersStatusBarHidden {
+    UIApplicationSceneClientSettings *clientSettings = self.sceneClientSettings;
+    return [clientSettings respondsToSelector:@selector(statusBarHidden)] && clientSettings.statusBarHidden;
+}
+
+- (BOOL)clientPrefersHomeIndicatorAutoHidden {
+    UIApplicationSceneClientSettings *clientSettings = self.sceneClientSettings;
+    return [clientSettings respondsToSelector:@selector(homeIndicatorAutoHidden)] && clientSettings.homeIndicatorAutoHidden;
+}
+
 @end
  

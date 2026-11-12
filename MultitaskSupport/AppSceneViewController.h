@@ -42,5 +42,8 @@ API_AVAILABLE(ios(16.0))
 - (void)openURLScheme:(NSString *)urlString;
 - (void)handleStatusBarTapAction:(UIAction *)action;
 - (BOOL)usesHostingControllerAPI;
+// Guest app status bar / home indicator preferences, read from scene client settings.
+- (BOOL)clientPrefersStatusBarHidden;
+- (BOOL)clientPrefersHomeIndicatorAutoHidden;
 @end
 
